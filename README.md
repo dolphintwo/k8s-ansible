@@ -59,7 +59,7 @@ kubelet 首次启动时向 kube-apiserver 发送证书签名请求，必须通�
 7. __k8smaster__ kubernetes master 节点安装
 8. __k8snode__ kubernetes node节点安装
 
-##参考文档
+## 参考文档
 
 [和我一步步部署 kubernetes 集群](https://github.com/opsnull/follow-me-install-kubernetes-cluster) 主要参考kubernetes集群安装方式
     
