@@ -1,0 +1,10 @@
+---
+
+- include: install_ceph.yml
+  when: inventory_hostname in groups.ceph
+
+- include: install_ceph_common.yml
+  when: inventory_hostname in groups.kubernetes
+
+- include: install_ceph_secret.yml
+  when: inventory_hostname in groups.kuber_master

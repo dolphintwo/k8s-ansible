@@ -1,0 +1,12 @@
+- name: 创建dns服务目录
+  file:
+    path: "{{k8s_dns_dir}}"
+    state: directory
+
+- name: 上传dns服务文件
+  template: src={{ item }} dest={{k8s_dns_dir}}/{{ item | basename | regex_replace('\.j2','') }}
+  with_fileglob:
+    - ../templates/dns/*.j2
+
+- name: 启动dns服务
+  shell: kubectl create -f {{k8s_dns_dir}}

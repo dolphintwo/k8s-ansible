@@ -1,0 +1,62 @@
+---
+
+# - include: back_and_stop.yml
+
+- name: unarchive etcd-v3.1.6-linux-amd64.tar.gz
+  unarchive:
+    src: "{{tar_dir}}/etcd-v3.1.6-linux-amd64.tar.gz"
+    dest: /root
+
+- name: mv etcd bin file
+  shell: "mv /root/etcd-v3.1.6-linux-amd64/etcd* {{root_bin}}"
+  become: true
+
+- name: mkdir root ssl dir
+  file:
+    path: "{{root_ssl_dir}}"
+    state: directory
+
+- name: copy etcd-csr
+  template:
+    src: ../templates/etcd-csr.json.j2
+    dest: "{{root_ssl_dir}}/etcd-csr.json"
+    force: true
+
+- name: etcd ssl dir
+  file:
+    path: "{{etcd_ssl}}"
+    state: directory
+
+- name: grant etcd ssl
+  shell: cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem -ca-key=/etc/kubernetes/ssl/ca-key.pem  -config=/etc/kubernetes/ssl/ca-config.json -profile=kubernetes etcd-csr.json | cfssljson -bare etcd
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: mv etcd pem
+  shell:  mv etcd*.pem /etc/etcd/ssl && rm etcd.csr  etcd-csr.json
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: mkdir etcd lib dir
+  file:
+    path: /var/lib/etcd
+    state: directory
+
+- name: copy etcd.service
+  template:
+    src: ../templates/etcd.service.j2
+    dest: "/etc/systemd/system/etcd.service"
+    force: true
+
+- name: 拷贝etcd 数据文件
+  shell: "cp -R {{old_etcd_dir}}/etcd-data/* /var/lib/etcd/"
+
+- name: 将etcd数据从v2转成v3
+  shell: "ETCDCTL_API=3 {{root_bin}}/etcdctl migrate --data-dir=/var/lib/etcd/"
+
+- name: srart etcd
+  systemd:
+    name: etcd
+    daemon_reload: true
+    enabled: true
+    state: started

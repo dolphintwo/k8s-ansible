@@ -1,0 +1,2 @@
+k8s_efk_dir: "{{k8s_addon_dir}}/efk"
+k8s_efk_image_dir: "{{k8s_addon_dir}}/efk_image"

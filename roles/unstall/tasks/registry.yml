@@ -1,0 +1,5 @@
+---
+
+- name: obsolete container
+  shell: "docker rm -f registry"
+  ignore_errors: yes

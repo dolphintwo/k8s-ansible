@@ -1,0 +1,27 @@
+---
+
+- name: stop etcd
+  systemd:
+    name: etcd
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  ignore_errors: yes
+
+- name: delete etcd service
+  file:
+    path: "/etc/systemd/system/etcd.service"
+    state: absent
+
+- name: delete etcd dir path
+  file:
+    path: "/var/lib/etcd/"
+    state: absent
+
+- name: delete bin
+  file:
+    path: "{{root_bin}}/{{ item }}"
+    state: absent
+  with_items:
+    - etcd
+    - etcdctl

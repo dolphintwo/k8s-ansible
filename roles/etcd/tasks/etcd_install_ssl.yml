@@ -1,0 +1,27 @@
+---
+
+- name: mkdir root ssl dir
+  file:
+    path: "{{root_ssl_dir}}"
+    state: directory
+
+- name: copy etcd-csr
+  template:
+    src: ../templates/etcd-csr.json.j2
+    dest: "{{root_ssl_dir}}/etcd-csr.json"
+    force: true
+
+- name: etcd ssl dir
+  file:
+    path: "{{etcd_ssl}}"
+    state: directory
+
+- name: grant etcd ssl
+  shell: cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem -ca-key=/etc/kubernetes/ssl/ca-key.pem  -config=/etc/kubernetes/ssl/ca-config.json -profile=kubernetes etcd-csr.json | cfssljson -bare etcd
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: mv etcd pem
+  shell:  mv etcd*.pem /etc/etcd/ssl && rm etcd.csr  etcd-csr.json
+  args:
+    chdir:  "{{root_ssl_dir}}"

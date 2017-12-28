@@ -1,0 +1,183 @@
+---
+
+- name: 创建.kube 文件夹
+  file:
+    path: /root/.kube
+    state: directory
+
+- name: 上传kube config　文件
+  copy:
+    src: "{{local_ssl_dir}}config"
+    dest: "/root/.kube/config"
+    force: yes
+
+- file:
+    path: "{{root_bin}}"
+    state: directory
+
+- name: 解压 kubernetes-server-linux-amd64 压缩包
+  unarchive:
+    src: "{{tar_dir}}/kubernetes-server-linux-amd64.tar.gz"
+#    src: /root/kubernetes-server-linux-amd64.tar.gz
+    dest: /root
+#    remote_src: True
+
+#- name: 解压　kubernetes-src
+#  unarchive:
+#    src: /root/kubernetes/kubernetes-src.tar.gz
+#    dest: /root/kubernetes
+#    remote_src: True
+
+- name: 复制　kubernetes的 kube-proxy,kubelet,kubectl 文件
+  shell: "cp -r server/bin/{kube-proxy,kubelet,kubectl} {{root_bin}}/"
+  args:
+    chdir: /root/kubernetes
+
+- name: 创建.kube 文件夹
+  file:
+    path: /root/.kube
+    state: directory
+
+- name: 上传kube config　文件
+  copy:
+    src: "{{local_ssl_dir}}config"
+    dest: "/root/.kube/config"
+    force: yes
+
+- name: 创建 kubelet bootstrapping kubeconfig 文件 ,设置集群参数
+  shell: kubectl config set-cluster kubernetes \
+           --certificate-authority=/etc/kubernetes/ssl/ca.pem \
+           --embed-certs=true \
+           --server=https://{{ hostvars[groups['kuber_master'][0]]['ansible_eth0']['ipv4']['address'] }}:6443 \
+           --kubeconfig=bootstrap.kubeconfig
+  args:
+    chdir: "/root"
+
+- name: 设置客户端认证参数
+  shell: kubectl config set-credentials kubelet-bootstrap \
+           --token={{BOOTSTRAP_TOKEN}} \
+           --kubeconfig=bootstrap.kubeconfig
+  args:
+    chdir: "/root"
+
+- name: 设置上下文参数
+  shell: kubectl config set-context default \
+           --cluster=kubernetes \
+           --user=kubelet-bootstrap \
+           --kubeconfig=bootstrap.kubeconfig
+  args:
+    chdir: "/root"
+
+- name: 设置默认上下文
+  shell: kubectl config use-context default --kubeconfig=bootstrap.kubeconfig
+  args:
+    chdir: "/root"
+
+- name: 移动　bootstrap.kubeconfig　到/etc/kubernetes/
+  shell: mv bootstrap.kubeconfig /etc/kubernetes/
+  args:
+    chdir: "/root"
+
+- name: 创建kubelet工作目录
+  file:
+    path: /var/lib/kubelet
+    state: directory
+
+- name: 创建 kubelet 的 systemd unit 文件
+  template:
+    src:  ../templates/kubelet.service.j2
+    dest: "/etc/systemd/system/kubelet.service"
+    force: true
+
+- name:  启动　kubelet
+  systemd:
+    name: kubelet
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: 创建 kube-proxy 证书
+  template:
+    src:  ../templates/kube-proxy-csr.json.j2
+    dest: "{{root_ssl_dir}}/kube-proxy-csr.json"
+    force: true
+
+- name: 生成 kube-proxy 客户端证书和私钥
+  shell: cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+           -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+           -config=/etc/kubernetes/ssl/ca-config.json \
+           -profile=kubernetes  kube-proxy-csr.json | cfssljson -bare kube-proxy
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name:  mv kube-proxy*.pem /etc/kubernetes/ssl/
+  shell: "mv kube-proxy*.pem {{kube_ssl}}"
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: rm kube-proxy config
+  shell: "rm -rf kube-proxy.csr  kube-proxy-csr.json"
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: 创建 kube-proxy kubeconfig 文件
+  shell: kubectl config set-cluster kubernetes \
+           --certificate-authority=/etc/kubernetes/ssl/ca.pem \
+           --embed-certs=true \
+           --server=https://{{ hostvars[groups['kuber_master'][0]]['ansible_eth0']['ipv4']['address'] }}:6443 \
+           --kubeconfig=kube-proxy.kubeconfig
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name:  设置客户端认证参数
+  shell: kubectl config set-credentials kube-proxy \
+           --client-certificate=/etc/kubernetes/ssl/kube-proxy.pem \
+           --client-key=/etc/kubernetes/ssl/kube-proxy-key.pem \
+           --embed-certs=true \
+           --kubeconfig=kube-proxy.kubeconfig
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+
+- name: 设置上下文参数
+  shell: kubectl config set-context default \
+           --cluster=kubernetes \
+           --user=kube-proxy \
+           --kubeconfig=kube-proxy.kubeconfig
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: 设置默认上下文
+  shell: kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: 移动kube-proxy.kubeconfig
+  shell: mv kube-proxy.kubeconfig /etc/kubernetes/
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: 创建kube-proxy工作目录
+  file:
+    path: /var/lib/kube-proxy
+    state: directory
+
+- name: 创建 kube-proxy 的 systemd unit 文件
+  template:
+    src:  ../templates/kube-proxy.service.j2
+    dest:  "/etc/systemd/system/kube-proxy.service"
+    force: true
+
+- name:  启动　kube-proxy
+  systemd:
+    name: kube-proxy
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: delete kubernetes dir path
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /root/kubernetes/

@@ -1,0 +1,22 @@
+---
+
+- include: one_components.yml
+  when: inventory_hostname in groups.kuber_master
+
+- include: ceph.yml
+  when: inventory_hostname in groups.ceph
+
+- include: registry.yml
+  when: inventory_hostname in groups.registry
+
+- include: k8s_node.yml
+  when: inventory_hostname in groups.kuber_node
+
+- include: k8s_master.yml
+  when: inventory_hostname in groups.kuber_master
+
+- include: etcd.yml
+
+- include: cfssl.yml
+  when: inventory_hostname in groups.etcdservers
+

@@ -1,0 +1,16 @@
+---
+
+- name: Creates root_bin
+  file:
+    path: "{{root_bin}}"
+    state: directory
+
+- name: Creates kube_ssl
+  file:
+    path: "{{kube_ssl}}"
+    state: directory
+
+- name: Creates root_ssl_dir
+  file:
+    path: "{{root_ssl_dir}}"
+    state: directory

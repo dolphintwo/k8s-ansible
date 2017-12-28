@@ -1,0 +1,19 @@
+---
+
+- name: unarchive kubernetes-client-linux-amd64.tar.gz
+  unarchive:
+    src: "{{tar_dir}}/kubernetes-client-linux-amd64.tar.gz"
+    dest: /root
+
+- name: cp kubectl to root bin
+  shell: "cp kubernetes/client/bin/kube* {{root_bin}}"
+  args:
+    chdir: /root
+
+- name: chmod a+x /root/local/bin/kube*
+  shell: chmod a+x /root/local/bin/kube*
+
+- name: rm -rf kubernetes
+  shell: rm -rf kubernetes
+  args:
+      chdir: /root

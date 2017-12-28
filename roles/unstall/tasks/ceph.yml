@@ -1,0 +1,28 @@
+---
+
+- name: 删除ceph相关的服务
+  shell: "kubectl delete -f {{item}}"
+  with_items:
+    - "{{k8s_addon_dir}}/ceph/redis/."
+    - "{{k8s_addon_dir}}/ceph/mysql/."
+    - "{{k8s_addon_dir}}/ceph/."
+  ignore_errors: yes
+
+- name: 删除ceph容器
+  shell: "docker rm -f {{ item }}"
+  with_items:
+    - ceph-wrapper
+    - ceph-rgw
+    - ceph-mds
+    - ceph-osd
+    - ceph-mon
+  ignore_errors: yes
+
+- name: 删除ceph配置
+  shell: "rm -rf {{item}}"
+  with_items:
+    - /etc/ceph/*
+    - /var/lib/ceph/*
+
+- name: 删除ceph 数据目录
+  shell: "rm -rf {{ceph_data_dir}}/*"

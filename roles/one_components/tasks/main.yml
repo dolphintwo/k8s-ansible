@@ -1,0 +1,13 @@
+---
+
+- include: mysql.yml
+
+- include: redis.yml
+
+- include: zookeeper.yml
+
+- include: proxy.yml
+
+- include: rabbitmq.yml
+
+- include: sonar.yml

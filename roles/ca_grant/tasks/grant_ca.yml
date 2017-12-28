@@ -1,0 +1,71 @@
+---
+
+- name: mkdir ssl dir
+  file:
+    path: "{{root_ssl_dir}}"
+    state: directory
+
+- name: cfssl print-defaults config
+  shell:  "cfssl print-defaults config > config.json"
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: cfssl print-defaults csr
+  shell:  cfssl print-defaults csr > csr.json
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: cp ca-config.json
+  template:
+    src: ../templates/ca-config.json.j2
+    dest: "{{root_ssl_dir}}/ca-config.json"
+    force: true
+
+- name: cp ca-csr.json
+  template:
+    src: ../templates/ca-csr.json.j2
+    dest: "{{root_ssl_dir}}/ca-csr.json"
+    force: true
+
+- name: cfssl gencert
+  shell: cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+
+- name: cp template
+  template:
+    src: ../templates/kubernetes-csr.json.j2
+    dest: "{{root_ssl_dir}}/kubernetes-csr.json"
+    force: true
+
+- name: 生成 kubernetes 证书
+  shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kubernetes-csr.json | cfssljson -bare kubernetes
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: 校验证书
+  command:  openssl x509  -noout -text -in  kubernetes.pem
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name:
+  command: cfssl-certinfo -cert kubernetes.pem
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: mkdir kube ssl dir
+  file:
+    path: "{{kube_ssl}}"
+    state: directory
+
+- name: 分发证书
+  shell:  "cp *.pem {{kube_ssl}} && cp ca-config.json {{kube_ssl}}"
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+#- name: 同步证书
+#  synchronize:
+#    src: "{{kube_ssl}}"
+#    dest: "{{kube_ssl}}"
+#  delegate_to: etcdservers

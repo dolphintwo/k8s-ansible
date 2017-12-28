@@ -1,0 +1,18 @@
+---
+
+- name: 创建zookeeper模板目录
+  file:
+    path: "{{one_components_dir}}/zookeeper"
+    state: directory
+
+- name: 上传 zookeeper 模板
+  template:
+    src: "../templates/zookeeper/{{item}}"
+    dest: "{{one_components_dir}}/zookeeper/{{item}}"
+    force: true
+  with_items:
+    - one-zk-deployment.yaml
+    - one-zk-service.yaml
+
+- name: 创建zookeeper服务
+  shell: "kubectl create -f {{one_components_dir}}/zookeeper/."

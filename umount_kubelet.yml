@@ -1,0 +1,13 @@
+---
+
+- hosts: kuber_node
+  remote_user: root
+  become: yes
+  become_method: sudo
+  serial: 1
+
+  tasks:
+
+    - name: umount
+      shell: "umount {{item}}"
+      with_lines: df -h | grep kubelet | awk '{print $6}'

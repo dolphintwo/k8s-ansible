@@ -1,0 +1,138 @@
+---
+
+- name: 显示网关
+  shell: "var={{ hostvars[groups['ceph'][0]]['ansible_eth0']['ipv4']['address'] }};echo \"${var%.*}.0\" "
+  register: ceph_gateway
+
+- name: 创建 ceph mon
+  shell: "docker run -d --net=host \
+          -v /etc/ceph:/etc/ceph \
+          -v /var/lib/ceph/:/var/lib/ceph/ \
+          -e MON_IP={{ hostvars[groups['ceph'][0]]['ansible_eth0']['ipv4']['address'] }} \
+          -e CEPH_PUBLIC_NETWORK={{ceph_gateway.stdout}}/24 \
+          --name=ceph-mon \
+          {{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/ceph-daemon mon"
+
+- name: 修改 ceph mon的配置
+  shell: "docker exec ceph-mon echo \"{{ item }}\">> /etc/ceph/ceph.conf"
+  with_items:
+    - osd pool default size = 1
+    - osd pool default min size = 1
+    - osd crush chooseleaf type = 0
+
+- name: 重启ceph mon
+  shell: docker restart ceph-mon
+
+- name: 创建ceph mds
+  shell: "docker run -d --net=host -v /etc/ceph:/etc/ceph -v /var/lib/ceph/:/var/lib/ceph/ -e CEPHFS_CREATE=1 --name=ceph-mds {{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/ceph-daemon mds"
+
+- name: 创建ceph数据目录
+  file:
+    path: "{{ceph_data_dir}}"
+    state: directory
+
+- name: 创建ceph ods
+  shell: "docker run -d --net=host --privileged=true -v /etc/ceph:/etc/ceph -v/var/lib/ceph/:/var/lib/ceph/ -v /dev/:/dev/ -v {{ceph_data_dir}}:/var/lib/ceph/osd  --name=ceph-osd {{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/ceph-daemon osd_directory"
+
+- name: 创建 ceph rgw
+  shell: "docker run -d --net=host -v /etc/ceph:/etc/ceph -v /var/lib/ceph/:/var/lib/ceph/ -e RGW_CIVETWEB_PORT=7480 --name=ceph-rgw {{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/ceph-daemon rgw"
+
+- name: 等待rgw启动成功
+  wait_for:
+    host: "{{ hostvars[groups['ceph'][0]]['ansible_eth0']['ipv4']['address'] }}"
+    port: 7480
+    delay: 10
+
+- name: 创建 rgw 添加网关用户
+  shell: "docker exec ceph-rgw radosgw-admin user create --uid=\"admin\" --display-name=\"admin\""
+  register: output
+
+- name: 网关用户创建结果转化json
+  set_fact:
+    rgw_output: "{{ output.stdout|from_json }}"
+
+- name: 显示网关用户创建的结果
+  debug:
+    msg:  "{{rgw_output}}"
+
+- debug:
+    msg: "{{rgw_output.keys}}"
+
+- name: 给网关用户授权
+  shell: docker exec  ceph-rgw radosgw-admin  caps add --uid=admin --caps="users=*;buckets=*;metadata=*;usage=*;zone=*"
+
+- name: 启动 ceph-wapper
+  shell: "docker run -d     -p 9080:8080     -v /etc/ceph:/etc/ceph     --name ceph-wrapper     {{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/paas-ceph-wrapper:20161013"
+
+- name: 调整pool size 为1
+  shell: "docker exec  ceph-wrapper ceph {{item}}"
+  with_items:
+    - osd pool set rbd size 1
+    - osd pool set cephfs_data size 1
+    - osd pool set cephfs_metadata size 1
+
+- name: 等待ceph pool调整完毕
+  wait_for:
+    host: "{{ hostvars[groups['ceph'][0]]['ansible_eth0']['ipv4']['address'] }}"
+    port: 9080
+    delay: 5
+
+- name: 查询ceph状态
+  shell: "docker exec ceph-wrapper ceph -s"
+  register: ceph_status
+
+- name: 检查ceph状态
+  fail:
+    msg: "ceph 状态检查失败"
+  when: ceph_status.stdout.find('HEALTH_OK') == -1
+
+- name: 网关用户创建结果转化json
+  set_fact:
+    rgw_output: "{{ output.stdout|from_json }}"
+    rgw_access_key: "{{ (output.stdout|from_json )['keys'][0]['access_key'] }}"
+    rgw_secret_key: "{{ (output.stdout|from_json )['keys'][0]['secret_key'] }}"
+
+- name: 显示创建的json
+  debug:
+    msg: rgw_output
+
+- name: 保存创建json结果
+  shell: "echo {{rgw_output}} > /etc/ceph/create_user.json"
+
+- name: 显示access_key
+  debug:
+    msg: "{{rgw_access_key}}"
+
+- name: 显示secret_key
+  debug:
+    msg:  "{{rgw_secret_key}}"
+
+- name: 创建s3桶
+  shell: "docker run  --rm \
+                    -e ACCESS_KEY={{rgw_access_key}} \
+                    -e SECRET_KEY={{rgw_secret_key}} \
+                    -e HOST={{ hostvars[groups['ceph'][0]]['ansible_eth0']['ipv4']['address'] }}  \
+                    -e PORT=7480 \
+                    {{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/ceph-bucket-client"
+
+- name: 安装 ceph-common
+  yum:
+    name: ceph-common
+    state: present
+
+- name: ceph_key
+  shell: "ceph auth get-key client.admin | base64"
+  register: ceph_key_output
+
+- name: ceph_key_base64
+  set_fact:
+    ceph_key: "{{ceph_key_output.stdout}}"
+
+- name: 创建 ceph pool ,pool 名为 pass
+  shell: docker exec ceph-wrapper ceph osd pool create paas 8 8
+
+- name: 创建 mysql rbd
+  shell: docker exec ceph-wrapper rbd create mysqlpaas --size 2048 --pool paas
+
+- name: 创建 redis rdb
+  shell: docker exec ceph-wrapper rbd create redispaas --size 2048 --pool paas

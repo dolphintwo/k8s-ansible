@@ -1,0 +1,12 @@
+---
+
+- hosts: all
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - unstall
+

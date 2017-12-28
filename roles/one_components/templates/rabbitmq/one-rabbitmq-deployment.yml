@@ -1,0 +1,20 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: newtouchone
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      hostname: rabbitmq
+      containers:
+      - name: rabbitmq
+        image: {{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/rabbitmq:3.5.4
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5672
+        - containerPort: 15672

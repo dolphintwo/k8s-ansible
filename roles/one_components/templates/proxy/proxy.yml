@@ -1,0 +1,42 @@
+{
+  "kind": "DaemonSet",
+  "apiVersion": "extensions/v1beta1",
+  "metadata": {
+    "name": "one-proxy",
+    "namespace": "newtouchone",
+    "labels": {
+      "instanceId": "one-proxy"
+    }
+  },
+  "spec": {
+    "selector": {
+      "matchLabels": {
+        "instanceId": "one-proxy"
+      }
+    },
+    "template": {
+      "metadata": {
+        "name": "one-proxy",
+        "namespace": "newtouchone",
+        "labels": {
+          "instanceId": "one-proxy"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "one-proxy",
+            "image": "{{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/one-nginx:1.0",
+            "imagePullPolicy": "IfNotPresent"
+          }
+        ],
+        "restartPolicy": "Always",
+        "dnsPolicy": "ClusterFirst",
+        "nodeSelector": {
+          "PROXY": "TRUE"
+        },
+        "hostNetwork": true
+      }
+    }
+  }
+}

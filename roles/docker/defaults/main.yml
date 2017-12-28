@@ -1,0 +1,2 @@
+#docker_version: docker-17.04.0-ce
+docker_version: docker-1.12.6

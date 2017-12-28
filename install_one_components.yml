@@ -1,0 +1,13 @@
+---
+
+## 安装 one-components 服务
+- hosts: kube_master_and_registry
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - role: one_components
+      when: inventory_hostname in groups.kuber_master

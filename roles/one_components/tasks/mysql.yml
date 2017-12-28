@@ -1,0 +1,18 @@
+---
+
+
+- name: 创建 mysql ceph配置目录
+  file:
+      path: "{{one_components_dir}}/mysql"
+      state: directory
+
+- name: 上传mysql配置文件
+  template:
+    src: "../templates/mysql/{{item}}.j2"
+    dest: "{{one_components_dir}}/mysql/{{item}}"
+  with_items:
+    - mysql-configmap.yml
+    - mysql-rc.yaml
+
+- name: 创建 mysql 服务
+  shell: "kubectl create -f {{one_components_dir}}/mysql/."

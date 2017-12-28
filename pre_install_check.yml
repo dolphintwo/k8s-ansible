@@ -1,0 +1,9 @@
+---
+
+## 安装前环境校验
+- hosts: all
+  remote_user: root
+  become: yes
+  become_method: sudo
+  roles:
+    - env_check

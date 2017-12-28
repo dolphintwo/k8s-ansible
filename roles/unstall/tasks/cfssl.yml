@@ -1,0 +1,10 @@
+---
+
+- name: 删除cfssl
+  file:
+    path: "{{root_bin}}/{{item}}"
+    state: absent
+  with_items:
+    - cfssl
+    - cfssljson
+    - cfssl-certinfo

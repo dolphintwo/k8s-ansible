@@ -1,0 +1,23 @@
+---
+
+- hosts: all
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - cfssl
+    - ca_grant
+
+## 安装etcd服务
+- hosts: etcdservers
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - etcd

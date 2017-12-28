@@ -1,0 +1,44 @@
+[Unit]
+Description=Kubernetes API Server
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+After=network.target
+
+[Service]
+ExecStart=/root/local/bin/kube-apiserver \
+  --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \
+  --advertise-address={{ hostvars[groups['kuber_master'][0]]['ansible_eth0']['ipv4']['address'] }} \
+  --bind-address={{ hostvars[groups['kuber_master'][0]]['ansible_eth0']['ipv4']['address'] }} \
+  --insecure-bind-address={{ hostvars[groups['kuber_master'][0]]['ansible_eth0']['ipv4']['address'] }} \
+  --authorization-mode=RBAC \
+  --runtime-config=rbac.authorization.k8s.io/v1alpha1 \
+  --kubelet-https=true \
+  --experimental-bootstrap-token-auth \
+  --token-auth-file=/etc/kubernetes/token.csv \
+  --service-cluster-ip-range={{SERVICE_CIDR}} \
+  --service-node-port-range={{NODE_PORT_RANGE}} \
+  --tls-cert-file=/etc/kubernetes/ssl/kubernetes.pem \
+  --tls-private-key-file=/etc/kubernetes/ssl/kubernetes-key.pem \
+  --client-ca-file=/etc/kubernetes/ssl/ca.pem \
+  --service-account-key-file=/etc/kubernetes/ssl/ca-key.pem \
+{% if etcd_use_ssl %}
+  --etcd-cafile=/etc/kubernetes/ssl/ca.pem \
+  --etcd-certfile=/etc/kubernetes/ssl/kubernetes.pem \
+  --etcd-keyfile=/etc/kubernetes/ssl/kubernetes-key.pem \
+{% endif %}
+  --etcd-servers={% for host in groups['etcdservers'] %}http{% if etcd_use_ssl %}s{% endif %}://{{ hostvars[host]['ansible_eth0']['ipv4']['address'] }}:2379{% if not loop.last%},{%endif%}{% endfor %} \
+  --enable-swagger-ui=true \
+  --allow-privileged=true \
+  --apiserver-count=3 \
+  --audit-log-maxage=30 \
+  --audit-log-maxbackup=3 \
+  --audit-log-maxsize=100 \
+  --audit-log-path=/var/lib/audit.log \
+  --event-ttl=1h \
+  --v=2
+Restart=on-failure
+RestartSec=5
+Type=notify
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

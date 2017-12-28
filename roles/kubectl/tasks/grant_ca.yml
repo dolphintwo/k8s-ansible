@@ -1,0 +1,49 @@
+---
+
+- name: mkdir ssl dir
+  file:
+    path: "{{root_ssl_dir}}"
+    state: directory
+
+- name: grant admin-csr config
+  template:
+    src: ../templates/admin-csr.json.j2
+    dest: "{{root_ssl_dir}}/admin-csr.json"
+
+- name: grant admin-csr pem
+  shell: cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+           -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+           -config=/etc/kubernetes/ssl/ca-config.json \
+           -profile=kubernetes admin-csr.json | cfssljson -bare admin
+  args:
+    chdir: "{{root_ssl_dir}}"
+
+- name: mv admin*.pem /etc/kubernetes/ssl/
+  shell: "mv admin*.pem {{kube_ssl}}/"
+  args:
+    chdir: "{{root_ssl_dir}}"
+
+- name: 设置集群参数
+  shell: "kubectl config set-cluster kubernetes --certificate-authority=/etc/kubernetes/ssl/ca.pem --embed-certs=true --server=https://{{ hostvars[groups['kuber_master'][0]]['ansible_eth0']['ipv4']['address'] }}:6443"
+  args:
+    chdir: "{{root_ssl_dir}}"
+
+- name: 设置客户端认证参数
+  shell: kubectl config set-credentials admin \
+           --client-certificate=/etc/kubernetes/ssl/admin.pem \
+           --embed-certs=true \
+           --client-key=/etc/kubernetes/ssl/admin-key.pem
+
+- name: 设置上下文参数
+  shell: kubectl config set-context kubernetes \
+          --cluster=kubernetes \
+          --user=admin
+
+- name: 设置默认上下文
+  shell: kubectl config use-context kubernetes
+
+- name: 下载kube config文件
+  fetch:
+    src:  "/root/.kube/config"
+    dest: "{{local_ssl_dir}}"
+    flat: yes

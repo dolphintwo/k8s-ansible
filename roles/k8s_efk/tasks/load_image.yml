@@ -1,0 +1,25 @@
+---
+
+
+- name: create efk addon image dir
+  file:
+    path: "{{k8s_efk_image_dir}}"
+    state: directory
+
+- name: upload_efk_image
+  copy:
+    src:  "{{tar_dir}}/k8s_addon/efk/{{ item }}"
+    dest: "{{k8s_efk_image_dir}}/{{ item }}"
+  with_items:
+    - elasticsearch.tar
+    - fluentd-elasticsearch.tar
+    - kibana.tar
+
+- name: load efk image
+  shell: "docker load < {{ item }}"
+  args:
+    chdir: "{{k8s_efk_image_dir}}"
+  with_items:
+    - elasticsearch.tar
+    - fluentd-elasticsearch.tar
+    - kibana.tar

@@ -1,0 +1,1 @@
+one_components_dir: "{{k8s_addon_dir}}/one_components"

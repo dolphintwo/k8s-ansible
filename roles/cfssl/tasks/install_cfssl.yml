@@ -1,0 +1,51 @@
+---
+
+- name: Creates root bin directory
+  file:
+    path: "{{root_bin}}"
+    state: directory
+
+- name: cpoy cfssl
+  copy:
+    src: "{{tar_dir}}/cfssl_linux-amd64"
+    dest: "{{root_bin}}/cfssl"
+    force: yes
+- name: copy cfssljson
+  copy:
+    src: "{{tar_dir}}/cfssljson_linux-amd64"
+    dest: "{{root_bin}}/cfssljson"
+    force: yes
+- name: copy cfssl-certinfo
+  copy:
+    src: "{{tar_dir}}/cfssl-certinfo_linux-amd64"
+    dest: "{{root_bin}}/cfssl-certinfo"
+    force: yes
+
+
+- name: set cfssl executor
+  file:
+    path: "{{root_bin}}/cfssl"
+    mode: "u=rwx,g=r,o=r"
+- name: set cfssljson executor
+  file:
+    path: "{{root_bin}}/cfssljson"
+    mode: "u=rwx,g=r,o=r"
+- name: set cfssl-certinfo executor
+  file:
+    path: "{{root_bin}}/cfssl-certinfo"
+    mode: "u=rwx,g=r,o=r"
+
+- name: exprot path
+  lineinfile:
+    path: /root/.bash_profile
+    line: "export PATH=/root/local/bin:$PATH"
+    regexp: '^export PATH='
+
+- name: stop firewalld
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: false
+  when: (ansible_distribution == "CentOS") or
+        (ansible_distribution == "Debian")
+  ignore_errors: yes

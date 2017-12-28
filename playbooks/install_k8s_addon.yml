@@ -1,0 +1,10 @@
+# kubernetes 插件安装
+- hosts: kuber_master
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - k8s_addon

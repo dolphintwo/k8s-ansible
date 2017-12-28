@@ -1,0 +1,19 @@
+---
+
+- name: 安装 kubectl 命令
+  include: install_kubelet.yml
+
+- name: 生成 kubectl 的证书
+  include: grant_ca.yml
+  when: inventory_hostname in groups.kuber_master
+
+- name: 创建.kube 文件夹
+  file:
+    path: /root/.kube
+    state: directory
+
+- name: 上传kube config　文件
+  copy:
+    src: "{{local_ssl_dir}}config"
+    dest: "/root/.kube/config"
+    force: yes

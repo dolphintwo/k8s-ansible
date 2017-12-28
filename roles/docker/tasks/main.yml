@@ -1,0 +1,88 @@
+---
+
+- file:
+    path: "{{root_bin}}"
+    state: directory
+
+- name: 传输 docker 压缩包
+  unarchive:
+    src: "{{tar_dir}}/{{docker_version}}.tgz"
+    dest: /root
+
+- name: copy docker bin
+  shell: "cp docker/docker* /usr/bin"
+  args:
+    chdir: /root
+
+- stat: path=/root/docker/completion/bash/docker
+  register: completion_docker
+
+- file:
+    path: /etc/bash_completion.d/
+    state: directory
+
+
+- name: copy docker bash
+  shell: "cp docker/completion/bash/docker /etc/bash_completion.d/"
+  args:
+    chdir: /root
+  when: completion_docker.stat.exists == True
+
+- name: create docker service
+  template:
+    src: ../templates/docker.service.j2
+    dest: "/etc/systemd/system/docker.service"
+    force: true
+
+- name: stop firewalld
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: false
+  when: (ansible_distribution == "CentOS") or
+        (ansible_distribution == "Debian")
+  ignore_errors: yes
+
+- name: set iptables
+  shell: "iptables -F && iptables -X && iptables -F -t nat && iptables -X -t nat"
+  when: (ansible_distribution == "CentOS") or
+        (ansible_distribution == "Debian") or
+        (ansible_distribution == "Ubuntu")
+
+- name: 创建 docker配置文件目录
+  file:
+    path: /etc/docker
+    state: directory
+
+- name: 上传 docker　配置文件
+  template:
+    src: ../templates/daemon.json.j2
+    dest: /etc/docker/daemon.json
+
+- name: srart docker
+  systemd:
+    name: docker
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: exprot path
+  lineinfile:
+    path: /root/.bash_profile
+    line: "export PATH=/root/local/bin:$PATH"
+    regexp: '^export PATH='
+
+- name: delete docker dir path
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /root/docker
+
+
+- name: set iptables forward ACCEPT
+  shell: "iptables -P FORWARD ACCEPT"
+  when: (ansible_distribution == "CentOS") or
+          (ansible_distribution == "Debian") or
+          (ansible_distribution == "Ubuntu")
+

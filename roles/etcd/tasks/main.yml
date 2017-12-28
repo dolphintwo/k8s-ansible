@@ -1,0 +1,37 @@
+---
+
+- name: unarchive etcd-v3.1.6-linux-amd64.tar.gz
+  unarchive:
+    src: "{{tar_dir}}/etcd-v3.1.6-linux-amd64.tar.gz"
+    dest: /root
+
+- name: mv etcd bin file
+  shell: "mv /root/etcd-v3.1.6-linux-amd64/etcd* {{root_bin}}"
+  become: true
+
+- include: etcd_install_ssl.yml
+  when: etcd_use_ssl
+
+- name: mkdir etcd lib dir
+  file:
+    path: /var/lib/etcd
+    state: directory
+
+- name: copy etcd.service
+  template:
+    src: ../templates/etcd.service.j2
+    dest: "/etc/systemd/system/etcd.service"
+    force: true
+
+- name: srart etcd
+  systemd:
+    name: etcd
+    daemon_reload: true
+    enabled: true
+    state: started
+
+
+- name: delete install dir
+  file:
+    path: "/root/etcd-v3.1.6-linux-amd64/"
+    state: absent

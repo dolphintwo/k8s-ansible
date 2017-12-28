@@ -1,0 +1,4 @@
+k8s_dns_dir: "{{k8s_addon_dir}}/dns"
+k8s_dashboard_dir: "{{k8s_addon_dir}}/dashboard"
+k8s_heapster_dir: "{{k8s_addon_dir}}/heapster"
+k8s_efk_dir: "{{k8s_addon_dir}}/efk"

@@ -1,0 +1,135 @@
+---
+
+- name: 解压 kubernetes-server-linux-amd64 压缩包
+  unarchive:
+    src: "{{tar_dir}}/kubernetes-server-linux-amd64.tar.gz"
+#    src: /root/kubernetes-server-linux-amd64.tar.gz
+    dest: /root
+#    remote_src: True
+
+#- name: 解压　kubernetes-src
+#  unarchive:
+#    src: /root/kubernetes/kubernetes-src.tar.gz
+#    dest: /root/kubernetes
+#    remote_src: True
+
+- name: 复制　kubernetes bin 文件
+  shell: "cp -r server/bin/{kube-apiserver,kube-controller-manager,kube-scheduler,kubectl,kube-proxy,kubelet} {{root_bin}}/"
+  args:
+    chdir: /root/kubernetes
+
+- name: 生成 kubectl 的证书
+  include: grant_ca.yml
+
+- name: 创建.kube 文件夹
+  file:
+    path: /root/.kube
+    state: directory
+
+- name: 上传kube config　文件
+  copy:
+    src: "{{local_ssl_dir}}config"
+    dest: "/root/.kube/config"
+    force: yes
+
+- name: 上传　kubernetes master 证书配置
+  template:
+    src: ../templates/kubernetes-csr.json.j2
+    dest: "{{root_ssl_dir}}/kubernetes-csr.json"
+
+- name: 生成 kubernetes 证书和私钥
+  shell: cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+           -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+           -config=/etc/kubernetes/ssl/ca-config.json \
+           -profile=kubernetes kubernetes-csr.json | cfssljson -bare kubernetes
+  args:
+    chdir: "{{root_ssl_dir}}"
+
+- file:
+    path: "{{kube_ssl}}"
+    state: directory
+
+- name: 复制kubernetes 证书
+  shell:  "mv kubernetes*.pem {{kube_ssl}}/"
+  args:
+    chdir: "{{root_ssl_dir}}"
+
+- name: 上传　token.csv
+  template:
+    src: ../templates/token.csv.j2
+    dest: /etc/kubernetes/token.csv
+
+- name: 上传 kube-apiserver 的 systemd unit 文件
+  template:
+    src: ../templates/kube-apiserver.service.j2
+    dest: "/etc/systemd/system/kube-apiserver.service"
+    force: true
+
+- name:  启动　kube-apiserver
+  systemd:
+    name: kube-apiserver
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: 上传 kube-controller-manager 的 systemd unit 文件
+  template:
+    src: ../templates/kube-controller-manager.service.j2
+    dest: "/etc/systemd/system/kube-controller-manager.service"
+    force: true
+
+- name:  启动　kube-controller-manager
+  systemd:
+    name: kube-controller-manager
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: 上传 kube-scheduler 的 systemd unit 文件
+  template:
+    src: ../templates/kube-scheduler.service.j2
+    dest: "/etc/systemd/system/kube-scheduler.service"
+    force: true
+
+- name:  启动　kube-scheduler
+  systemd:
+    name: kube-scheduler
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: 等待kuber-apiserver 启动
+  wait_for:
+    host: "{{ hostvars[groups['kuber_master'][0]]['ansible_eth0']['ipv4']['address'] }}"
+    port: 6443
+    delay: 10
+
+- name: 发送 TLS bootstrapping 请求
+  shell: kubectl create clusterrolebinding kubelet-bootstrap --clusterrole=system:node-bootstrapper --user=kubelet-bootstrap
+
+- name:  安装etcd 客户端
+  unarchive:
+    src: "{{tar_dir}}/etcd-v3.1.6-linux-amd64.tar.gz"
+    dest: /root
+
+- name: mv etcd bin file
+  shell: "mv /root/etcd-v3.1.6-linux-amd64/etcdctl {{root_bin}}"
+  become: true
+
+- name: 向 etcd 写入集群 Pod 网段信息
+  shell: "/root/local/bin/etcdctl \
+           --endpoints={% for host in groups['etcdservers'] %}http{% if etcd_use_ssl %}s{% endif %}://{{ hostvars[host]['ansible_eth0']['ipv4']['address'] }}:2379{% if not loop.last%},{%endif%}{% endfor %} \
+           {% if etcd_use_ssl %}
+           --ca-file=/etc/kubernetes/ssl/ca.pem \
+           --cert-file=/etc/flanneld/ssl/flanneld.pem \
+           --key-file=/etc/flanneld/ssl/flanneld-key.pem \
+           {% endif %}
+           set {{FLANNEL_ETCD_PREFIX}}/config '{\"Network\":\"'{{CLUSTER_CIDR}}'\", \"SubnetLen\": 24, \"Backend\": {\"Type\": \"vxlan\"}}' "
+  when: inventory_hostname in groups.kuber_master
+
+- name: delete kubernetes dir path
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /root/kubernetes/

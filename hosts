@@ -1,0 +1,45 @@
+[etcdservers]
+node1 ansible_host=8zllqfwq.hd3.newtouch.com ansible_port=49773 etcd_master=true
+
+[kuber_master]
+node1 ansible_host=8zllqfwq.hd3.newtouch.com ansible_port=49773
+
+[kuber_node]
+node1 ansible_host=8zllqfwq.hd3.newtouch.com ansible_port=49773 PROXY=TRUE
+
+[kubernetes:children]
+kuber_master
+kuber_node
+
+[kuber_and_etcd:children]
+kubernetes
+etcdservers
+
+[registry]
+node1 ansible_host=8zllqfwq.hd3.newtouch.com ansible_port=49773
+
+[kube_master_and_registry:children]
+kuber_master
+registry
+
+[kuber_node_and_registry:children]
+kuber_node
+registry
+
+[kuber_and_etcd_and_registry:children]
+kuber_and_etcd
+registry
+
+[ceph]
+node1 ansible_host=8zllqfwq.hd3.newtouch.com ansible_port=49773
+
+[kuber_and_ceph:children]
+kubernetes
+ceph
+
+[kuber_and_ceph_and_registry:children]
+kuber_and_ceph
+registry
+
+[kuber_addition_node]
+## kuber2 ansible_host=zmhwyhz6.hd4.newtouch.com ansible_port=50194

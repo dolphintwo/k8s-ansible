@@ -1,0 +1,21 @@
+---
+
+- name: 下载证书文件
+  fetch:
+    src:  "{{kube_ssl}}/{{ item }}"
+    dest: "{{local_ssl_dir}}"
+    flat: yes
+  with_items:
+    - ca-key.pem
+    - ca.pem
+    - kubernetes-key.pem
+    - kubernetes.pem
+    - ca-config.json
+  when: etcd_master is defined
+
+- name: 下载kube config文件
+  fetch:
+    src:  "/root/.kube/config"
+    dest: "{{local_ssl_dir}}"
+    flat: yes
+  when: inventory_hostname in groups.kuber_master

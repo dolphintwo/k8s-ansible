@@ -1,0 +1,102 @@
+---
+
+- name: stop kube node service
+  shell: "systemctl stop {{ item }}"
+  with_items:
+    - kube-proxy
+    - kubelet
+    - docker
+    - flanneld
+  ignore_errors: yes
+
+- name: disable kube node service
+  shell: "systemctl disable {{ item }}"
+  with_items:
+    - kube-proxy
+    - kubelet
+    - docker
+    - flanneld
+  ignore_errors: yes
+#
+#
+#- name: stop kube-proxy
+#  systemd:
+#    name: kube-proxy
+#    enabled: false
+#    state: stopped
+#    daemon_reload: true
+#  ignore_errors: yes
+#
+#- name: stop kubelet
+#  systemd:
+#    name: kubelet
+#    enabled: false
+#    state: stopped
+#    daemon_reload: true
+#  ignore_errors: yes
+#
+#- name: stop docker
+#  systemd:
+#    name: docker
+#    enabled: false
+#    state: stopped
+#    daemon_reload: true
+#  ignore_errors: yes
+#
+#- name: stop flanneld
+#  systemd:
+#    name: flanneld
+#    enabled: false
+#    state: stopped
+#    daemon_reload: true
+#  ignore_errors: yes
+
+- name: delete kube service
+  file:
+    path: "/etc/systemd/system/{{ item }}"
+    state: absent
+  with_items:
+    - kube-proxy.service
+    - kubelet.service
+    - docker.service
+    - flanneld.service
+
+- name: delete bin
+  file:
+    path: "{{root_bin}}/{{ item }}"
+    state: absent
+  with_items:
+    - kube-proxy
+    - kubelet
+    - flanneld
+    - mk-docker-opts.sh
+    - etcd
+    - etcdctl
+
+- name: delete docker bin
+  file:
+    path: "/usr/bin/{{ item }}"
+    state: absent
+  with_items:
+    - docker
+    - dockerd
+
+- name: delete kubernetes dir path
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /root/.kube/
+    - /etc/kubernetes/
+    - "{{kube_ssl}}/"
+    - "{{root_ssl_dir}}/"
+    - /var/lib/kube-proxy/
+    - /var/lib/kubelet/
+    - /etc/docker/
+    - "{{FLANNEL_ETCD_PREFIX}}/"
+
+
+- name: delete docker lib
+  shell:  "rm -rf {{ item }}"
+  with_items:
+    - "{{docker_root_dir}}/*"

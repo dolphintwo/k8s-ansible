@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: paas-redis
+  namespace: newtouchone
+  labels:
+    instanceId: paas-redis
+    instanceEngineType: Redis
+    paas: paas
+spec:
+  replicas: 1
+  selector:
+    instanceId: paas-redis
+  template:
+    metadata:
+      name: paas-redis
+      namespace: newtouchone
+      labels:
+        instanceId: paas-redis
+        instanceEngineType: Redis
+        paas: paas
+    spec:
+      volumes:
+      - name: rbd-vol
+        rbd:
+          monitors:
+          - {{ hostvars[groups['ceph'][0]]['ansible_eth0']['ipv4']['address'] }}:6789
+          pool: paas
+          image: redispaas
+          user: admin
+          secretRef:
+            name: ceph-secret-newtouch-one
+          fsType: ext4
+          readOnly: false
+      containers:
+      - name: paas-redis
+        image: {{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/nt-redis:3.2.4
+        resources:
+          limits:
+            memory: 1024M
+            cpu: '1'
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: rbd-vol
+          mountPath: "/data"
+        env:
+        - name: FALCON_HOSTNAME
+          value: newtouch-paas-redis
+        - name: FALCON_HEARTBEAT_URL
+          value: 172.23.64.188:6030
+        - name: FALCON_TRANSFER_URL
+          value: 172.23.64.188:8433
+        - name: REDIS_AUTH_PASSWORD
+          value: root
+        imagePullPolicy: Always
+      restartPolicy: Always

@@ -1,0 +1,9 @@
+---
+
+- name: 创建私服证书目录
+  file:
+    path: "/etc/docker/certs.d/{{hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000"
+    state: directory
+
+- name: 复制registry　证书到证书目录
+  shell: "cp /etc/kubernetes/ssl/ca.pem /etc/docker/certs.d/{{hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/ca.crt"

@@ -1,0 +1,6 @@
+root_ssl_dir: "/root/ssl"
+etcd_ssl: "/etc/etcd/ssl"
+
+old_etcd_dir: "/root/install/etcd_2.3.7"
+old_etcd_service: "/usr/lib/systemd/system/etcd.service"
+backup_dir: "/root/backup"

@@ -1,0 +1,80 @@
+---
+
+- name: create root ssl dir
+  file:
+    path: "{{root_ssl_dir}}"
+    state: directory
+
+- name: 上传 flannel 证书配置
+  template:
+    src: ../templates/flanneld-csr.json.j2
+    dest: "{{root_ssl_dir}}/flanneld-csr.json"
+    force: true
+
+- name: 生成 flannel 证书文件
+  shell: cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+           -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+           -config=/etc/kubernetes/ssl/ca-config.json \
+           -profile=kubernetes flanneld-csr.json | cfssljson -bare flanneld
+  args:
+      chdir: "{{root_ssl_dir}}"
+
+- name: 创建 flannel 证书目录
+  file:
+    path: "{{flannel_ssl}}"
+    state: directory
+
+- name: 移动 flannel 证书文件
+  shell: "mv flanneld*.pem {{flannel_ssl}} && rm flanneld.csr  flanneld-csr.json"
+  args:
+    chdir: "{{root_ssl_dir}}"
+
+- name:  安装etcd 客户端
+  unarchive:
+    src: "{{tar_dir}}/etcd-v3.1.6-linux-amd64.tar.gz"
+    dest: /root
+
+- name: mv etcd bin file
+  shell: "mv /root/etcd-v3.1.6-linux-amd64/etcd* {{root_bin}}"
+  become: true
+
+- name: create flannel dir
+  file:
+    path: /root/flannel
+    state: directory
+
+- name: unarchive flannel-v0.7.1-linux-amd64.tar.gz
+  unarchive:
+    src: "{{tar_dir}}/flannel-v0.7.1-linux-amd64.tar.gz"
+    dest: /root/flannel
+
+- name: 将flannel bin 文件拷贝的 root bin 目录
+  shell: "cp flannel/{flanneld,mk-docker-opts.sh} {{root_bin}}"
+  args:
+    chdir:  /root
+
+- name: create kubernetes network dir
+  file:
+    path: "{{FLANNEL_ETCD_PREFIX}}"
+    state: directory
+
+- name: create flanneld service
+  template:
+    src: ../templates/flanneld.service.j2
+    dest: "/etc/systemd/system/flanneld.service"
+    force: true
+
+- name: srart flanneld
+  systemd:
+    name: flanneld
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: delete install file path
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /root/flannel
+    - /root/etcd-v3.1.6-linux-amd64

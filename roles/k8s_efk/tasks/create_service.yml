@@ -1,0 +1,15 @@
+---
+
+- name: 创建efk服务目录
+  file:
+    path: "{{k8s_efk_dir}}"
+    state: directory
+
+- name: 上传efk服务文件
+  template: src={{ item }} dest={{k8s_efk_dir}}/{{ item | basename | regex_replace('\.j2','') }}
+  with_fileglob:
+    - ../templates/*.j2
+
+- name: 启动efk服务
+  shell: kubectl create -f {{k8s_efk_dir}}
+  ignore_errors: yes

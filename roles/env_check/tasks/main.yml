@@ -1,0 +1,22 @@
+---
+
+- name: Get Kernel version
+  shell: uname -r | egrep '^[0-9]*\.[0-9]*' -o
+  register: kernel_shell_output
+
+- debug: msg="{{ kernel_shell_output.stdout}}"
+
+- name: 校验操作系统内核
+  fail:
+    msg: "需要将内核升级到3.18或以上"
+  when: kernel_shell_output.stdout != "3.18"
+
+
+- stat:
+    path: /usr/bin/docker
+  register: docker_stat
+
+- name: 校验有无安装docker
+  fail:
+    msg: "操作系统已经安装过docker"
+  when: docker_stat.stat.exists

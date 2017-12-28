@@ -1,0 +1,117 @@
+---
+
+- name: 确认docker是否安装
+  command: docker -v
+  register: result
+  ignore_errors: True
+
+- name: 确认是否需要安装docker
+  include: ../../docker_alone/tasks/main.yml
+  when: result|failed
+
+- name: 创建registry　certs目录
+  file:
+    path: "{{registry_dir}}/cert"
+    state: directory
+
+- name: 上传registry 镜像
+  copy:
+    src: "{{tar_dir}}/{{regisrty_image}}"
+    dest: "{{registry_dir}}/{{regisrty_image}}"
+
+- name: docker导入registry镜像
+  shell: "docker load < {{regisrty_image}}"
+  args:
+    chdir: "{{registry_dir}}"
+
+- file:
+    path: "{{root_ssl_dir}}"
+    state: directory
+
+- name: 上传证书配置
+  template:
+    src:  ../templates/registry-csr.json.j2
+    dest: "{{root_ssl_dir}}/registry-csr.json"
+
+- name: 创建registry 证书
+  shell: cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+             -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+             -config=/etc/kubernetes/ssl/ca-config.json \
+             -profile=kubernetes registry-csr.json | cfssljson -bare registry
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: 复制registry公司玥到cert目录
+  shell: "cp registry.pem registry-key.pem {{registry_dir}}/cert"
+  args:
+    chdir:  "{{root_ssl_dir}}"
+
+- name: 启动 docker registry
+  shell: docker run -d -p 5000:5000 --restart=always --name registry \
+           -v {{registry_dir}}/cert:/certs \
+           -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/registry.pem \
+           -e REGISTRY_HTTP_TLS_KEY=/certs/registry-key.pem \
+           registry:2
+
+- name: 创建私服证书目录
+  file:
+    path: "/etc/docker/certs.d/{{hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000"
+    state: directory
+
+- name: 复制registry　证书到证书目录
+  shell: "cp /etc/kubernetes/ssl/ca.pem /etc/docker/certs.d/{{hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/ca.crt"
+
+- name: 上传插件 镜像
+  copy:
+    src: "{{tar_dir}}/images/{{ item }}.tar"
+    dest: "{{registry_dir}}/{{ item }}.tar"
+  with_items:
+    - k8s-dns-kube-dns-amd64:v1.14.1
+    - k8s-dns-sidecar-amd64:v1.14.1
+    - heapster-amd64:v1.3.0-beta.1
+    - heapster-grafana-amd64:v4.0.2
+    - kubernetes-dashboard-amd64:v1.6.0
+    - heapster-influxdb-amd64:v1.1.1
+    - pod-infrastructure:latest
+    - k8s-dns-dnsmasq-nanny-amd64:v1.14.1
+    - paas-ceph-wrapper:20161013
+    - ceph-daemon:latest
+    - v4-zookeeper:3.4.9
+    - one-nginx:1.0
+    - rabbitmq:3.5.4
+    - sonarqube:6.3
+    - mysql:5.7
+    - nt-redis:3.2.4
+    - ceph-bucket-client:latest
+    #- elasticsearch:v2.4.1-2
+    #- kibana:v4.6.1-1
+    #- fluentd-elasticsearch:1.22
+
+- name: docker导入registry镜像
+  shell: "docker load < {{ item }}.tar && \
+          docker tag newtouchone/{{ item }} {{ ansible_eth0.ipv4.address }}:5000/newtouchone/{{ item }} && \
+          docker rmi newtouchone/{{ item }} && \
+          docker push {{ ansible_eth0.ipv4.address }}:5000/newtouchone/{{ item }}"
+  args:
+    chdir: "{{registry_dir}}"
+  with_items:
+    - k8s-dns-kube-dns-amd64:v1.14.1
+    - k8s-dns-sidecar-amd64:v1.14.1
+    - heapster-amd64:v1.3.0-beta.1
+    - heapster-grafana-amd64:v4.0.2
+    - kubernetes-dashboard-amd64:v1.6.0
+    - heapster-influxdb-amd64:v1.1.1
+    - pod-infrastructure:latest
+    - k8s-dns-dnsmasq-nanny-amd64:v1.14.1
+    - paas-ceph-wrapper:20161013
+    - ceph-daemon:latest
+    - v4-zookeeper:3.4.9
+    - one-nginx:1.0
+    - rabbitmq:3.5.4
+    - sonarqube:6.3
+    - mysql:5.7
+    - nt-redis:3.2.4
+    - ceph-bucket-client:latest
+    #- elasticsearch:v2.4.1-2
+    #- kibana:v4.6.1-1
+    #- fluentd-elasticsearch:1.22

@@ -1,0 +1,10 @@
+---
+
+- name: 下载证书文件
+  include: download_ssl.yml
+
+
+- name: 准备安装环境
+  include: prepared_install.yml
+  when: inventory_hostname in groups.kuber_addition_node
+

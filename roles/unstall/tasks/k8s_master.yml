@@ -1,0 +1,58 @@
+---
+
+
+- name: stop kube-scheduler
+  systemd:
+    name: kube-scheduler
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  ignore_errors: yes
+
+- name: stop kube-controller-manager
+  systemd:
+    name: kube-controller-manager
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  ignore_errors: yes
+
+
+- name: stop kube-apiserver
+  systemd:
+    name: kube-apiserver
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  ignore_errors: yes
+
+- name: delete kube service
+  file:
+    path: "/etc/systemd/system/{{ item }}"
+    state: absent
+  with_items:
+    - kube-apiserver.service
+    - kube-controller-manager.service
+    - kube-apiserver.service
+
+- name: delete bin
+  file:
+    path: "{{root_bin}}/{{ item }}"
+    state: absent
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+    - kubectl
+    - kube-proxy
+    - kubelet
+
+- name: delete kubernetes dir path
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /root/.kube/
+    - /etc/kubernetes/
+    - "{{kube_ssl}}/"
+    - "{{root_ssl_dir}}/"

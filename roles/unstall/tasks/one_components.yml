@@ -1,0 +1,10 @@
+---
+
+- name: 删除one-components 相关的服务
+  shell: "kubectl delete -f {{one_components_dir}}/{{item}}/."
+  with_items:
+    - zookeeper
+    - proxy
+    - rabbitmq
+    - sonar
+  ignore_errors: yes

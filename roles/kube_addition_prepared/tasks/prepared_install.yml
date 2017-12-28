@@ -1,0 +1,24 @@
+---
+
+## 安装前准备
+
+- file:
+    path: "{{root_bin}}"
+    state: directory
+
+- file:
+    path: "{{kube_ssl}}"
+    state: directory
+
+- name: 上传证书文件
+  copy:
+    src: "{{local_ssl_dir}}{{ item }}"
+    dest: "{{kube_ssl}}/"
+    force: yes
+  with_items:
+    - ca-key.pem
+    - ca.pem
+    - kubernetes-key.pem
+    - kubernetes.pem
+    - ca-config.json
+

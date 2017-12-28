@@ -1,0 +1,2 @@
+root_ssl_dir: "/root/ssl"
+etcd_ssl: "/etc/etcd/ssl"

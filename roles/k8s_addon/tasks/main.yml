@@ -1,0 +1,17 @@
+---
+
+- include: dns.yml
+  tags:
+    - dns
+
+- include: dashboard.yml
+  tags:
+    - dashboard
+
+- include: heapster.yml
+  tags:
+    - heapster
+
+#- include: efk.yml
+#  tags:
+#    - efk

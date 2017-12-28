@@ -1,0 +1,26 @@
+---
+
+- name: 创建proxy模板目录
+  file:
+    path: "{{one_components_dir}}/proxy"
+    state: directory
+
+- name: 上传 proxy 模板
+  template:
+    src: "../templates/proxy/{{item}}"
+    dest: "{{one_components_dir}}/proxy/{{item}}"
+    force: true
+  with_items:
+    - proxy.yml
+
+#- name: 修改 resolve 文件
+#  lineinfile:
+#    path: /etc/resolv.conf
+#    line: "{{ item }}"
+#  with_items:
+#    - "nameserver 10.254.0.2"
+#    - "search newtouchone.svc.cluster.local. svc.cluster.local. cluster.local. openstacklocal"
+#    - "options ndots:5"
+    
+- name: 创建proxy服务
+  shell: "kubectl create -f {{one_components_dir}}/proxy/."    

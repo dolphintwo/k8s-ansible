@@ -1,0 +1,18 @@
+---
+
+- name: 创建rabbitmq模板目录
+  file:
+    path: "{{one_components_dir}}/rabbitmq"
+    state: directory
+
+- name: 上传 rabbitmq 模板
+  template:
+    src: "../templates/rabbitmq/{{item}}"
+    dest: "{{one_components_dir}}/rabbitmq/{{item}}"
+    force: true
+  with_items:
+    - one-rabbitmq-deployment.yml
+    - one-rabbitmq-service.yml
+    
+- name: 创建rabbitmq服务
+  shell: "kubectl create -f {{one_components_dir}}/rabbitmq/."

@@ -1,0 +1,11 @@
+# kubernetes 插件安装
+- hosts: kube_master_and_registry
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - role: k8s_addon
+      when: inventory_hostname in groups.kuber_master

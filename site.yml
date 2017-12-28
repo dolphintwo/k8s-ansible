@@ -1,0 +1,86 @@
+---
+
+- hosts: all
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - cfssl
+    - ca_grant
+
+## 安装etcd服务
+- hosts: etcdservers
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - etcd
+
+## 安装kubernetes
+- hosts: kuber_and_etcd
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - {
+      role: kubectl,
+      when: inventory_hostname in groups.kubernetes
+    }
+    - {
+        role: flannel,
+        when: inventory_hostname in groups.kubernetes
+      }
+    - {
+      role: k8s_master ,
+      when: inventory_hostname in groups.kuber_master
+    }
+    - {
+        role: docker,
+        when: inventory_hostname in groups.kuber_node
+      }
+    - {
+        role: k8s_node,
+        when: inventory_hostname in groups.kuber_node
+      }
+
+## registry 私服安装
+- hosts: registry
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+  roles:
+    - registry
+
+# 分发registry 证书
+- hosts: kuber_node_and_registry
+  remote_user: root
+  become: yes
+  become_method: sudo
+  roles:
+    - registry_config
+
+# kubernetes 插件安装
+- hosts: kubernetes
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - k8s_dns
+    - k8s_dashboard
+    - k8s_heapster
+    #- k8s_efk
+

@@ -1,0 +1,15 @@
+---
+
+- name: 导入镜像
+  include: load_image.yml
+  when: inventory_hostname in groups.kuber_node
+
+- name: 给 Node 设置标签
+  shell: "{% for host in groups['kuber_node'] %}
+          {% if not loop.first%}&&{%endif%}kubectl label nodes {{ hostvars[host]['ansible_eth0']['ipv4']['address'] }} beta.kubernetes.io/fluentd-ds-ready=true
+        {% endfor %}"
+  when: inventory_hostname in groups.kuber_master
+
+- name: 启动efk 服务
+  include: create_service.yml
+  when: inventory_hostname in groups.kuber_master

@@ -1,0 +1,21 @@
+---
+
+## registry 私服安装
+- hosts: registry
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+  roles:
+    - registry
+
+# 分发registry 证书
+- hosts: kuber_node_and_registry
+  remote_user: root
+  become: yes
+  become_method: sudo
+  roles:
+    - registry_config
+
+

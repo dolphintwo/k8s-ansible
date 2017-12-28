@@ -1,0 +1,20 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: newtouchone
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+#        node: {{ hostvars[groups['kuber_node'][0]]['ansible_eth0']['ipv4'][' address'] }}
+    spec:
+      hostname: zookeeper
+      containers:
+      - name: zookeeper
+        image: {{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/v4-zookeeper:3.4.9
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 2181

@@ -1,0 +1,2 @@
+root_ssl_dir: "/root/ssl"
+local_ssl_dir: "/tmp/fetched/"

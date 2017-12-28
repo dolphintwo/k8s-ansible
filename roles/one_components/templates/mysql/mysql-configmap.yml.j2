@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: mysql-config
+    namespace: newtouchone
+    labels:
+        instanceId: paas-mysql
+        paas: paas
+data:
+    my-cnf: |
+        [mysqld]
+        log-bin=mysql-bin
+        server-id=1
+        skip-host-cache
+        skip-name-resolve
+        datadir = /var/lib/mysql
+        lower_case_table_names = 1
+        character_set_server = utf8mb4
+        collation-server = utf8mb4_unicode_ci
+        [client]
+        default-character-set = utf8mb4
+        !includedir /etc/mysql/conf.d/

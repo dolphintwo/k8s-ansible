@@ -1,0 +1,13 @@
+---
+
+## 安装 ceph 服务
+- hosts: kuber_and_ceph_and_registry
+  remote_user: root
+  become: yes
+  become_method: sudo
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{root_bin}}"
+
+  roles:
+    - role: ceph
+      when: inventory_hostname in groups.ceph

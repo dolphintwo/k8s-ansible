@@ -1,0 +1,31 @@
+---
+
+- name: 创建旧etcd 备份目录
+  file:
+    path: "{{backup_dir}}/etcd_backup"
+    state: directory
+
+
+- name: 备份 旧etcd service
+  copy:
+    src: "{{old_etcd_service}}"
+    dest: "{{backup_dir}}/etcd_backup/etcd.service"
+    remote_src: true
+
+- name: 备份旧的etcd数据
+  shell: "{{old_etcd_dir}}/etcdctl --endpoints http://127.0.0.1:2380 backup \
+        --data-dir {{old_etcd_dir}}/etcd-data \
+        --backup-dir {{backup_dir}}/etcd_backup/backup-data"
+
+- name: 停止etcd 服务
+  systemd:
+    name: etcd
+    state: stopped
+    enabled: false
+    daemon_reload: yes
+
+- name: 删除etcd.service
+  file:
+    path: "{{old_etcd_service}}"
+    state: absent
+

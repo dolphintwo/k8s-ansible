@@ -1,0 +1,6 @@
+---
+
+- name: 安装 ceph-common
+  yum:
+    name: ceph-common
+    state: present

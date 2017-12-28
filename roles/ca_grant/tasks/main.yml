@@ -1,0 +1,76 @@
+---
+
+- include: grant_ca.yml
+  when: etcd_master is defined
+
+- name: 下载证书文件 ca-key.pem
+  fetch:
+    src:  "{{kube_ssl}}/ca-key.pem"
+    dest: "{{local_ssl_dir}}"
+    flat: yes
+  when: etcd_master is defined
+
+- name: 下载证书文件 ca.pem
+  fetch:
+    src:  "{{kube_ssl}}/ca.pem"
+    dest: "{{local_ssl_dir}}"
+    flat: yes
+  when: etcd_master is defined
+
+- name: 下载证书文件 kubernetes-key.pem
+  fetch:
+    src:  "{{kube_ssl}}/kubernetes-key.pem"
+    dest: "{{local_ssl_dir}}"
+    flat: yes
+  when: etcd_master is defined
+
+- name: 下载证书文件 kubernetes.pem
+  fetch:
+    src:  "{{kube_ssl}}/kubernetes.pem"
+    dest: "{{local_ssl_dir}}"
+    flat: yes
+  when: etcd_master is defined
+
+- name: 下载证书文件 ca-config.json
+  fetch:
+    src:  "{{kube_ssl}}/ca-config.json"
+    dest: "{{local_ssl_dir}}"
+    flat: yes
+  when: etcd_master is defined
+
+
+
+- name: 创建 kubernetes ssl 目录
+  file:
+    path: "{{kube_ssl}}"
+    state: directory
+
+- name: 上传证书文件 ca-key.pem
+  copy:
+    src: "{{local_ssl_dir}}ca-key.pem"
+    dest: "{{kube_ssl}}/"
+    force: yes
+
+- name: 上传证书文件 ca.pem
+  copy:
+    src: "{{local_ssl_dir}}ca.pem"
+    dest: "{{kube_ssl}}/"
+    force: yes
+
+- name: 上传证书文件 kubernetes-key.pem
+  copy:
+    src: "{{local_ssl_dir}}kubernetes-key.pem"
+    dest: "{{kube_ssl}}/"
+    force: yes
+
+- name: 上传证书文件 kubernetes.pem
+  copy:
+    src: "{{local_ssl_dir}}kubernetes.pem"
+    dest: "{{kube_ssl}}/"
+    force: yes
+
+- name: 上传证书文件 ca-config.json
+  copy:
+    src: "{{local_ssl_dir}}ca-config.json"
+    dest: "{{kube_ssl}}/"
+    force: yes

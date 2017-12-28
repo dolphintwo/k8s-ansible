@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: paas-mysql
+  namespace: newtouchone
+  labels:
+    instanceId: paas-mysql
+    instanceEngineType: MySQL
+    paas: paas
+spec:
+  replicas: 1
+  selector:
+    instanceId: paas-mysql
+  template:
+    metadata:
+      name: paas-mysql
+      namespace: newtouchone
+      labels:
+        instanceId: paas-mysql
+        instanceEngineType: MySQL
+        paas: paas
+    spec:
+      volumes:
+      - name: rbd-vol
+        rbd:
+          monitors:
+            - {{ hostvars[groups['ceph'][0]]['ansible_eth0']['ipv4']['address'] }}:6789
+          pool: paas
+          image: mysqlpaas
+          user: admin
+          secretRef:
+              name: ceph-secret-newtouch-one
+          fsType: ext4
+          readOnly: false
+      - name: mysql-config-vol
+        configMap:
+          name: mysql-config
+          items:
+          - key: my-cnf
+            path: my.cnf
+      containers:
+      - name: paas-mysql
+        image: {{ hostvars[groups['registry'][0]]['ansible_eth0']['ipv4']['address'] }}:5000/newtouchone/mysql:5.7
+        args:
+          - "--ignore-db-dir=lost+found"
+          - "--character-set-server=utf8mb4"
+          - "--collation-server=utf8mb4_unicode_ci"
+        resources:
+          limits:
+            memory: "1024M"
+            cpu: "1"
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: rbd-vol
+          mountPath: /var/lib/mysql
+        - name: mysql-config-vol
+          mountPath: /mysqlConfig
+        env:
+        - name: NLS_LANG
+          value: AMERICAN_AMERICA.UTF8
+        - name: LANG
+          value: en_US.UTF-8
+        - name: MYSQL_ROOT_PASSWORD
+          value: root
+        - name: MYSQL_DATABASE
+          value: paas
+        - name: MYSQL_USER
+          value: paas
+        - name: MYSQL_PASSWORD
+          value: paas
+        - name: MYSQL_SERVER_ID
+          value: "1"
+        - name: MYSQL_TYPE
+          value: Primary
+        imagePullPolicy: IfNotPresent
+      restartPolicy: Always

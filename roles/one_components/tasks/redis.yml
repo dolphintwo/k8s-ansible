@@ -1,0 +1,17 @@
+---
+
+- name: 创建 redis ceph配置目录
+  file:
+      path: "{{one_components_dir}}/redis"
+      state: directory
+
+- name: 上传redis配置文件
+  template:
+    src: "../templates/redis/{{item}}.j2"
+    dest: "{{one_components_dir}}/redis/{{item}}"
+  with_items:
+    - redis-rc.yaml
+    - redis-service.yaml
+
+- name: 创建 redis 服务
+  shell: "kubectl create -f {{one_components_dir}}/redis/."
