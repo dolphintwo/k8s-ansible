@@ -1,13 +1,13 @@
 ## kubernetes 离线安装
 
-##　使用 ansible 命令进行集成安装
+## 使用 ansible 命令进行集成安装
 
 使用方式:
 
 1.  在中间机生成 ssh 公私玥
 2.  在需要备ansible控制的机器注入中间机密钥
 3.  配置hosts文件,设置机器角色
-4.  配置依赖文件，将需要的文件拷贝到files目录,也可以运行`download_dependence.sh` 进行下载
+4.  配置依赖文件，将需要的文件拷贝到files目录
 5.  在此工程根目录下执行
         ansible-playbook -i hosts site.yml
 6.  等待命令执行完成
